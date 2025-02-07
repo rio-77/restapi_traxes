@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "733650862524",
+    "project_id": "app-traxes",
+    "storage_bucket": "app-traxes.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:733650862524:android:cb7a69fa5d812e9c0e6bb9",
+        "android_client_info": {
+          "package_name": "com.traxes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5YcXenh-aDu9ZGWab6ghGFFPoS9LqZR8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

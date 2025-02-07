@@ -4,3 +4,6 @@ extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autoli
 rootProject.name = 'traxes'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
+
+// firebase-notifikasi 
+include ':google-services' // Include the Google Services module (optional for some setups)
