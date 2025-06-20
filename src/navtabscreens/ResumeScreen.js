@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, StatusBar  } from 'react-native';
 const ResumeScreen = () => {
   // Membuat Animated.Value sebagai nilai awal animasi
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -28,6 +28,8 @@ const ResumeScreen = () => {
   });
   return (
     <View style={styles.container}>
+      {/* StatusBar dengan warna hitam */}
+      <StatusBar backgroundColor="black" barStyle="light-content" />
       <Animated.Text style={[styles.animatedText, { transform: [{ translateY }] }]}>
         Progres
       </Animated.Text>

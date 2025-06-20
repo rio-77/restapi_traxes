@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Image, Text, Alert, StyleSheet, TouchableOpacity } from 'react-native';
 import ProgressBar from 'react-native-progress/Bar';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { createTable, saveDataToSQLite } from '../../helper/sqliteservice';
+import changeNavigationBarColor from 'react-native-navigation-bar-color';
 const DownloadNew = () => {
   const navigation = useNavigation();
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
+
+
+  useEffect(() => {
+      // Set Navigation Bar Color
+      changeNavigationBarColor('#ffffff', true); // Warna biru tua dan ikon terang
+  })
+
+
   const downloadData = async () => {
     setLoading(true);
     setProgress(0); // Reset progress
@@ -33,7 +42,7 @@ const DownloadNew = () => {
             'Berhasil',
             'Toko berhasil didownload..',
             [
-              { text: 'OK', onPress: () => navigation.navigate('Home') }
+              { text: 'OK', onPress: () => navigation.navigate('DownloadNew') }
             ]
           );
         }, (error) => {
@@ -57,7 +66,7 @@ const DownloadNew = () => {
         <TouchableOpacity onPress={() => navigation.navigate('Home')}>
           <Image source={require('../../assets/icc_back.png')} style={styles.icBack} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Download Toko</Text>
+        <Text style={styles.headerTitle}>Download Data Offline</Text>
       </LinearGradient>
       {/* Button Download */}
       <View style={styles.centeredView}>

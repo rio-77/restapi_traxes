@@ -1,277 +1,236 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Alert, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import { launchCamera } from 'react-native-image-picker';
-import LinearGradient from 'react-native-linear-gradient';
+import { View, Text, Alert, StyleSheet, ScrollView, TouchableOpacity, Image, BackHandler } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
-import axios from 'axios';
-import { insertCheckinData } from '../../helper/checkin'; // Helper untuk menyimpan data ke SQLite
+import { launchCamera } from 'react-native-image-picker';
 import { openDatabase } from 'react-native-sqlite-storage';
+import { calculateDistance } from '../../src/utils/utils';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import LinearGradient from 'react-native-linear-gradient';
+import { getusersprofile } from '../../helper/login';
+import { saveCheckinToLocalDB, initCheckinTable } from '../../helper/sqliteservice';
 
-// Membuka koneksi SQLite
-const db = openDatabase({ name: 'checkin_data.db', location: 'default' });
+const db = openDatabase({ name: 'lokasi_toko.db', location: 'default' });
 
-const DetailCheckinBelow = () => {
-  const [fotoToko, setFotoToko] = useState('');
+const DetailCheckinBelow = ({ route }) => {
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
-  const [distance, setDistance] = useState(0);
-  const [keterangan, setKeterangan] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [tokoLatitude, setTokoLatitude] = useState(null);
+  const [tokoLongitude, setTokoLongitude] = useState(null);
+  const [tokoAddress, setTokoAddress] = useState(null);
+  const [jarak, setJarak] = useState(null);
+  const [projectRadius, setProjectRadius] = useState(null);
+  const [isCheckinAllowed, setIsCheckinAllowed] = useState(null);
+  const [employeeData, setEmployeeData] = useState(null);
+  const [photo, setPhoto] = useState(null);
 
-  const employee_id = "21530826"; // ID karyawan
-  const jabatan_id = "5"; // ID jabatan
-  const project_id = "30"; // ID project
+  const navigation = useNavigation();
+  const { customer_id, project_id } = route.params || {};
 
-  // Mengambil data lokasi saat komponen dimuat
   useEffect(() => {
-    getCurrentLocation();
-  }, []);
+    const fetchEmployeeData = async () => {
+      try {
+        const userProfile = await getusersprofile();
+        if (userProfile) {
+          setEmployeeData(userProfile);
+        } else {
+          Alert.alert('Error', 'Employee data not found');
+        }
+      } catch (error) {
+        console.error('Error fetching employee data:', error);
+        Alert.alert('Error', 'Failed to retrieve employee data');
+      }
+    };
 
-  // Fungsi untuk mendapatkan lokasi terkini
-  const getCurrentLocation = () => {
+    fetchEmployeeData();
+
     Geolocation.getCurrentPosition(
       (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-
-        setLatitude(lat);
-        setLongitude(lon);
-
-        // Tunggu hingga state diperbarui, lalu hitung jarak
-        setTimeout(() => calculateDistance(lat, lon), 100);
+        setLatitude(position.coords.latitude);
+        setLongitude(position.coords.longitude);
       },
-      (error) => {
-        console.error('Error mendapatkan lokasi:', error);
-        Alert.alert('Error', 'Gagal mendapatkan lokasi Anda. Mohon aktifkan GPS.');
-      },
-      { enableHighAccuracy: true, timeout: 1000000, maximumAge: 1000 }
+      (error) => Alert.alert('Error', 'Failed to get location'),
+      { enableHighAccuracy: true }
     );
-  };
 
-  // Menghitung jarak menggunakan rumus Haversine
-  const calculateDistance = (lat1, lon1) => {
-    if (latitude === null || longitude === null) return;
+    if (customer_id) {
+      db.transaction((tx) => {
+        tx.executeSql(
+          'SELECT latitude, longitude, address FROM lokasi_toko WHERE customer_id = ?',
+          [customer_id],
+          (tx, results) => {
+            if (results.rows.length > 0) {
+              const toko = results.rows.item(0);
+              setTokoLatitude(toko.latitude);
+              setTokoLongitude(toko.longitude);
+              setTokoAddress(toko.address);
+            } else {
+              Alert.alert('Error', 'Store data not found');
+            }
+          }
+        );
+      });
+    }
 
-    const R = 6371; // Radius bumi dalam km
-    const lat1Rad = toRadians(lat1);
-    const lon1Rad = toRadians(lon1);
-    const lat2Rad = toRadians(latitude);
-    const lon2Rad = toRadians(longitude);
 
-    const dLat = lat2Rad - lat1Rad;
-    const dLon = lon2Rad - lon1Rad;
+     // Tangani tombol back bawaan HP
+      const backAction = () => {
+        navigation.navigate('tambahlokasitoko2'); // Navigasi ke Home
+        return true; // Cegah aplikasi tertutup
+      };
+    
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    
+      return () => backHandler.remove(); // Hapus event listener saat komponen unmount
 
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1Rad) * Math.cos(lat2Rad) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c * 1000; // Jarak dalam meter
 
-    setDistance(distance);
-  };
+  }, [customer_id]);
 
-  // Fungsi untuk konversi derajat ke radian
-  const toRadians = (deg) => deg * (Math.PI / 180);
-
-  // Fungsi untuk mengambil foto toko
-  const handleAmbilFoto = async () => {
-    const options = {
-      mediaType: 'photo',
-      quality: 0.8,
-      includeBase64: true,
+  useEffect(() => {
+    const getProjectRadius = async () => {
+      try {
+        const response = await axios.post('https://api.traxes.id/index.php/download/projectradius', { project_id });
+        setProjectRadius(parseInt(response.data.data[0].project_radius));
+      } catch (error) {
+        console.error('Error fetching radius:', error);
+        Alert.alert('Error', 'Failed to get project radius');
+      }
     };
 
-    try {
-      const result = await launchCamera(options);
-      if (result.assets && result.assets[0].base64) {
-        setFotoToko(`data:image/jpeg;base64,${result.assets[0].base64}`);
-      } else {
-        Alert.alert('Info', 'Foto tidak diambil.');
-      }
-    } catch (error) {
-      console.error('Error mengambil foto:', error);
-      Alert.alert('Error', 'Gagal mengambil foto.');
+    if (project_id) {
+      getProjectRadius();
     }
+  }, [project_id]);
+
+  useEffect(() => {
+    if (latitude && longitude && tokoLatitude && tokoLongitude && projectRadius !== null) {
+      const distance = calculateDistance(latitude, longitude, tokoLatitude, tokoLongitude);
+      setJarak(distance);
+      setIsCheckinAllowed(distance <= projectRadius);
+    }
+  }, [latitude, longitude, tokoLatitude, tokoLongitude, projectRadius]);
+
+  const handleCapturePhoto = () => {
+    launchCamera({ mediaType: 'photo', quality: 0.5, includeBase64: true }, (response) => {
+      if (!response.didCancel && response.assets.length > 0) {
+        setPhoto(response.assets[0].base64);
+      }
+    });
   };
 
-  // Fungsi untuk mengirim request check-in ke API dan menyimpan data ke SQLite
+  useEffect(() => {
+    initCheckinTable(); // Pastikan tabel check-in dibuat saat komponen dimuat
+  }, []);
+  
+
   const handleCheckin = async () => {
-    if (!fotoToko) {
-      Alert.alert('Error', 'Harap ambil foto toko!');
+    if (!employeeData || !photo) {
+      Alert.alert('Peringatan nih !', 'Masukan foto teman-teman yaa..');
       return;
     }
-
-    // Memastikan jarak tidak lebih dari 500 meter
-    if (distance > 500) {
-      Alert.alert('Error', 'Gagal check-in, jarak lebih dari 500 meter.');
-      return;
-    }
-
-    const requestBody = {
-      employee_id,
-      customer_id: "",
-      jabatan_id,
-      date_cio: new Date().toISOString().slice(0, 10),
-      status_emp: "1",
-      datetimephone_in: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      project_id,
-      latitude_in: latitude,
-      longitude_in: longitude,
-      radius_in: 1.24,
-      distance_in: distance,
-      foto_in: fotoToko,
-      keterangan,
-      apk: "1",
-      update_toko: "1"
-    };
-
+  
     try {
-      setLoading(true);
-
-      // Mengirim request ke API
-      const response = await axios.post('https://api.traxes.id/index.php/v2/customer/pushCheckIn', requestBody);
+      const distance = calculateDistance(latitude, longitude, tokoLatitude, tokoLongitude);
+  
+      const requestData = {
+        employee_id: employeeData.employee_id,
+        customer_id,
+        jabatan_id: employeeData.jabatan_id,
+        date_cio: new Date().toISOString().split('T')[0],
+        status_emp: employeeData.status_emp,
+        datetimephone_in: new Date().toISOString(),
+        project_id,
+        latitude_in: latitude,
+        longitude_in: longitude,
+        radius_in: distance,
+        distance_in: distance,
+        foto_in: photo,
+        keterangan: employeeData.keterangan,
+        apk: employeeData.apk,
+        update_toko: employeeData.update_toko,
+      };
+  
+      // Kirim check-in ke API
+      const response = await axios.post('https://api.traxes.id/index.php/v2/customer/pushCheckIn', requestData);
+  
       if (response.data.status === 1) {
-        Alert.alert('Berhasil', response.data.message || 'Check-in berhasil!');
-
-        // Menyimpan data check-in ke SQLite setelah berhasil
-        insertCheckinData(requestBody);
-
-        // Reset state setelah check-in berhasil
-        setFotoToko('');
-        setLatitude(null);
-        setLongitude(null);
-        setDistance(0);
-        setKeterangan('');
+        // Simpan check-in ke database lokal SQLite
+        saveCheckinToLocalDB(requestData);
+      
+        Alert.alert('Success', 'Check-in berhasil disimpan');
+        navigation.navigate('DashboardToko', { customer_id, project_id }); // Pindah ke DetailToko
       } else {
-        Alert.alert('Gagal', response.data.message || 'Gagal melakukan check-in.');
+        Alert.alert('Error', 'Check-in gagal');
       }
     } catch (error) {
-      console.error('Error saat mengirim data ke server:', error);
-      Alert.alert('Error', `Terjadi kesalahan: ${error.message}`);
-    } finally {
-      setLoading(false);
+      console.error('Error performing check-in:', error);
+      Alert.alert('Error', 'Gagal melakukan check-in');
     }
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#204766', '#631D63']} style={styles.header}>
-        <Text style={styles.headerTitle}>Check-In</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+       <LinearGradient colors={['#204766', '#631D63']} style={styles.header}>
+              <TouchableOpacity onPress={() => navigation.navigate('CustomerListNewBelow')}>
+                <Image source={require('../../assets/icc_back.png')} style={styles.icBack} />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Checkin</Text>
+            </LinearGradient>
+      <View style={styles.card}>
+        <Text style={styles.title}>Detail Check-In</Text>
+        <Text style={styles.info}>Alamat Toko: {tokoAddress}</Text>
+        {jarak !== null && <Text style={styles.info}>Jarak: {jarak.toFixed(2)} meter</Text>}
+      </View>
+
+      <View style={styles.photoFrame}>
+      {photo && <Image source={{ uri: `data:image/jpeg;base64,${photo}` }} style={styles.preview} />}
+      </View>
+
+      <LinearGradient colors={['#204766', '#631D63']} style={styles.buttonGradientAmbilFoto}>
+      <TouchableOpacity style={styles.button} onPress={handleCapturePhoto}>
+        <Text style={styles.buttonText}>Ambil Foto</Text>
+      </TouchableOpacity>
       </LinearGradient>
+      
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.fotoContainer}>
-          <TouchableOpacity onPress={handleAmbilFoto} style={styles.fotoButton}>
-            {fotoToko ? (
-              <Image source={{ uri: fotoToko }} style={styles.fotoPreview} />
-            ) : (
-              <Text style={styles.fotoPlaceholder}>📷 Ambil Foto Checkin</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {latitude !== null && longitude !== null && (
-          <LinearGradient colors={['#ffffff', '#dfe9f3']} style={styles.card}>
-            <Text style={styles.cardText}>Latitude: {latitude}</Text>
-            <Text style={styles.cardText}>Longitude: {longitude}</Text>
-            <Text style={styles.cardText}>Jarak: {distance.toFixed(2)} meter</Text>
-          </LinearGradient>
-        )}
-
-        <LinearGradient colors={['#204766', '#631D63']} style={styles.gradientButton}>
-          <TouchableOpacity style={styles.button} onPress={handleCheckin} disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Check-In</Text>
-            )}
-          </TouchableOpacity>
+      {isCheckinAllowed && (
+        <LinearGradient colors={['#204766', '#631D63']} style={styles.buttonGradient}>
+        <TouchableOpacity style={styles.button} onPress={handleCheckin}>
+          <Text style={styles.buttonText}>Check In</Text>
+        </TouchableOpacity>
         </LinearGradient>
-      </ScrollView>
-    </View>
+      )}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
+  buttonGradientAmbilFoto: { borderRadius: 5, marginBottom: 7, marginTop: 15, marginLeft: 10, marginRight: 10},
+  buttonGradient: { borderRadius: 5, marginBottom: 7, marginLeft: 10, marginRight: 10 },
+  button: { padding: 15, alignItems: 'center' },
+  buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  photoFrame: { 
+    marginTop: 20, 
+    alignSelf: 'center', 
+    borderWidth: 5, 
+    borderColor: '#ddd', 
+    borderRadius: 15, 
+    overflow: 'hidden', 
+    shadowColor: '#000', 
+    shadowOpacity: 0.2, 
+    shadowRadius: 8, 
+    elevation: 5 
   },
-  header: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  content: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  fotoContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  fotoButton: {
-    width: 200,
-    height: 200,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#204766',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-  },
-  fotoPlaceholder: {
-    fontSize: 16,
-    color: '#204766',
-    textAlign: 'center',
-  },
-  fotoPreview: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
-  card: {
-    width: '90%',
-    padding: 15,
-    borderRadius: 10,
-    elevation: 5,
-    backgroundColor: '#FFF',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 2 },
-    marginBottom: 15,
-  },
-  cardText: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 5,
-  },
-  gradientButton: {
-    width: '90%',
-    padding: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  button: {
-    width: '100%',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
+  container: { flex: 1, backgroundColor: '#f9f9f9' },
+  header: { height: 100, padding: 20, flexDirection: 'row', alignItems: 'center' },
+  icBack: { width: 24, height: 24, marginTop: 10 },
+  headerTitle: { fontSize: 20, color: 'white', marginLeft: 10, marginTop: 10 },
+  card: { backgroundColor: '#fff', padding: 15, borderRadius: 10 },
+  title: { fontSize: 18, fontWeight: 'bold' },
+  info: { fontSize: 16 },
+  preview: { width: 225, height:225, borderRadius: 0 },
+  buttonText: { color: 'white', textAlign: 'center', fontSize: 16, style:'bold'}
 });
-
 
 export default DetailCheckinBelow;

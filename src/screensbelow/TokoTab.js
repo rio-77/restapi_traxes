@@ -1,18 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  Image 
-} from 'react-native';
+import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity,Image } from 'react-native';
 import { fetchFilteredDataWithLimit } from '../../helper/sqliteservice'; // Ganti dengan lokasi file SQLite helper Anda
-import { useNavigation } from '@react-navigation/native';
+// import { useNavigation } from '@react-navigation/native';
 
 const TokoTabBelow = () => {
-  const navigation = useNavigation();
+  // const navigation = useNavigation();
   const [filteredData, setFilteredData] = useState([]); // Data hasil pencarian
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false); // State untuk indikator loading
@@ -36,12 +28,12 @@ const TokoTabBelow = () => {
 
   // Fungsi saat card di-klik
   const handleCardPress = (item) => {
-    navigation.navigate('DetailCheckinBelow', {
-      customer_id: item.customer_id,
-      customer_name: item.customer_name,
-      latitude: item.latitude,
-      longitude: item.longitude,
-    });
+    // navigation.navigate('DetailCheckinBelow', {
+    //   customer_id: item.customer_id,
+    //   customer_name: item.customer_name,
+    //   latitude: item.latitude,
+    //   longitude: item.longitude,
+    // });
   };
 
   // Render setiap item (card)

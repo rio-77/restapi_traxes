@@ -33,11 +33,11 @@ const CallplanTabBelow = () => {
         if (response.data.status === 1) {
           setCallPlanData(response.data.data); // Menyimpan data call plan ke state
         } else {
-          setError('Tidak ada Callplan ID anda!');
+          setError('Daftar Kunjungan Kosong');
         }
       } catch (err) {
-        setError('Failed to fetch call plan data.');
-        console.error('Error fetching call plan data:', err);
+        setError('Daftar Kunjungan Kosong !');
+        console.error('Error fetching call plan data:' , err);
       } finally {
         setIsLoading(false);
       }

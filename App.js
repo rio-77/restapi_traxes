@@ -10,7 +10,7 @@ import Lembur from './src/screens/Lembur';
 import OrderSellOut from './src/screens/OrderSellOut';
 import StockSellin from './src/screens/StockSellin';
 import IzinAtauOffDay from './src/screens/IzinAtauOffDay';
-import Checkin from './src/screens/Checkin';
+// import Checkin from './src/screens/Checkin';
 import LoginScreenALt from './src/screens_alt/LoginScreen';
 import TambahLokasi from './src/screens/tambahlokasi';
 import TambahLokasiAlt from './src/screens/TambahLokasiAlt';
@@ -47,9 +47,25 @@ import CallplanTabBelow from './src/screensbelow/CallplanTab';
 import ListTokoScreen from './src/screensbelow/ListTokoScreen';
 import DownloadNew from './src/screensbelow/DownloadNew';
 import DetailCheckinBelow from './src/screensbelow/DetailCheckin';
+import DetailCheckOutBelow from './src/screensbelow/DetailCheckout';
 import TambahLocationBelow from './src/screensbelow/TambahLocation';
 import SplashScreenPage from './src/screenpage/SplashScreenPage';
-import LoginScreenPage from './src/screenpage/LoginScreenPage';
+import DashboardToko from './src/navtabscreens/DashboardToko';
+import DashboardToko2 from './src/navtabscreens/DashboardToko2';
+import DetailCheckinCardBelow from './src/screensbelow/DetailCheckinCard';
+import DetailToko from './src/navtabscreens/DetailToko';
+import dashboardutama from './src/screenfix/dashboardutama';
+import tambahlokasitoko from './src/screenfix/tambahlokasitoko';
+import downloaddataoffline from './src/screenfix/downloaddataoffline';
+import downloaddataoffline2 from './src/screenfix/downloaddataoffline2';
+import tambahlokasitoko2 from './src/screenfix/tambahlokasitoko2';
+import CheckinFix from './src/screenfix/checkinfix';
+import DashboardCheckin from './src/screenfix/dashboardcheckin';
+import DetailCheckin from './src/screenfix/detailcheckin';
+import RiwayatCio from './src/screenfix/riwayatcio';
+import DetailCio from './src/screenfix/detailcio';
+import DetailCo from './src/screenfix/detailcheckout';
+import RiwayatCio_DetailCi from './src/screenfix/riwayatcio_detailci';
 
 const Stack = createStackNavigator();
 
@@ -71,7 +87,7 @@ const App = () => {
         <Stack.Screen name="OrderSellOut" component={OrderSellOut} />
         <Stack.Screen name="StockSellin" component={StockSellin} />
         <Stack.Screen name="IzinAtauOffDay" component={IzinAtauOffDay} />
-        <Stack.Screen name="Checkin" component={Checkin} />
+        {/* <Stack.Screen name="Checkin" component={Checkin} /> */}
         <Stack.Screen name="LoginScreenAlt" component={LoginScreenALt} />
         <Stack.Screen name="TambahLokasi" component={TambahLokasi} />
         <Stack.Screen name="TambahLokasiAlt" component={TambahLokasiAlt} />
@@ -108,6 +124,27 @@ const App = () => {
         <Stack.Screen name="TambahLokasiTestBelow" component={TambahLokasiTestBelow} />
         <Stack.Screen name="ListTokoScreen" component={ListTokoScreen} />
         <Stack.Screen name="DetailCheckinBelow" component={DetailCheckinBelow} options={{ title: 'Detail Check-in' }}/>
+        <Stack.Screen name="DetailCheckinCardBelow" component={DetailCheckinCardBelow} options={{ title: 'Check-in' }}/>
+
+        <Stack.Screen name="DashboardToko" component={DashboardToko} />
+        <Stack.Screen name="DashboardToko2" component={DashboardToko2} />
+        <Stack.Screen name="DetailToko" component={DetailToko} />
+        <Stack.Screen name="DetailCheckOutBelow" component={DetailCheckOutBelow} />
+
+
+        {/* screen fix */}
+        <Stack.Screen name="dashboardutama" component={dashboardutama} />
+        <Stack.Screen name="tambahlokasitoko" component={tambahlokasitoko} />
+        <Stack.Screen name="downloaddataoffline" component={downloaddataoffline} />
+        <Stack.Screen name="downloaddataoffline2" component={downloaddataoffline2} />
+        <Stack.Screen name="tambahlokasitoko2" component={tambahlokasitoko2} />
+        <Stack.Screen name="checkinfix" component={CheckinFix} />
+        <Stack.Screen name="DashboardCheckin" component={DashboardCheckin} />
+        <Stack.Screen name="DetailCheckin" component={DetailCheckin} />
+        <Stack.Screen name="RiwayatCio" component={RiwayatCio} />
+        <Stack.Screen name="DetailCio" component={DetailCio} />
+        <Stack.Screen name="DetailCo" component={DetailCo} />
+        <Stack.Screen name="RiwayatCio_DetailCi" component={RiwayatCio_DetailCi} />
 
 {/* API */}
         {/* <SafeAreaView>

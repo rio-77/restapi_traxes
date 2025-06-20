@@ -59,6 +59,69 @@ export const saveUserData = (userData) => {
   });
 };
 
+// export const getUserLoginData = () => {
+//   return new Promise((resolve, reject) => {
+//     db.transaction(tx => {
+//       tx.executeSql(
+//         `SELECT * FROM user ORDER BY login_time DESC LIMIT 1;`,
+//         [],
+//         (_, result) => {
+//           if (result.rows.length > 0) {
+//             resolve(result.rows.item(0));
+//           } else {
+//             reject(new Error('Tidak ada data user.'));
+//           }
+//         },
+//         error => {
+//           reject(error);
+//         }
+//       );
+//     });
+//   });
+// };
+
+// Fungsi untuk mengambil data pengguna
+export const getUserDataa = (callback) => {
+  db.transaction((tx) => {
+    tx.executeSql(
+      `SELECT * FROM user LIMIT 1`, // Ambil 1 data pengguna pertama
+      [],
+      (tx, results) => {
+        if (results.rows.length > 0) {
+          const user = results.rows.item(0);
+          console.log('User data:', user);
+          callback(user); // Menyimpan data pengguna dalam callback
+        } else {
+          console.log('No user data found.');
+          callback(null); // Tidak ada data pengguna
+        }
+      },
+      (error) => console.error('Error fetching user data:', error)
+    );
+  });
+};
+
+export const getUserLoginData = () => {
+  return new Promise((resolve, reject) => {
+    db.transaction(tx => {
+      tx.executeSql(
+        `SELECT * FROM user ORDER BY login_time DESC LIMIT 1;`,
+        [],
+        (_, result) => {
+          if (result.rows.length > 0) {
+            resolve(result.rows.item(0));
+          } else {
+            reject(new Error('Tidak ada data user.'));
+          }
+        },
+        error => {
+          reject(error);
+        }
+      );
+    });
+  });
+};
+
 // Membuat tabel `lokasi_toko` jika belum ada
 export const createTableToko = () => {
   db.transaction((tx) => {
@@ -227,6 +290,33 @@ export const getusersprofile = () => {
 };
 
 
+export const getLatestCheckin = (employee_id) => {
+  return new Promise((resolve, reject) => {
+      db.transaction((tx) => {
+          tx.executeSql(
+              `SELECT c.customer_name, ci.checkin_date, ci.checkin_time, ci.latitude_in, ci.longitude_in, ci.distance 
+               FROM checkin ci
+               JOIN lokasi_toko c ON ci.customer_id = c.customer_id
+               WHERE ci.employee_id = ?
+               ORDER BY ci.checkin_date DESC, ci.checkin_time DESC
+               LIMIT 1`,
+              [employee_id],
+              (_, result) => {
+                  if (result.rows.length > 0) {
+                      resolve(result.rows.item(0)); // Ambil check-in terbaru
+                  } else {
+                      resolve(null); // Tidak ada data
+                  }
+              },
+              (_, error) => {
+                  reject(error);
+              }
+          );
+      });
+  });
+};
+
+
 // Memeriksa dan menampilkan data pengguna yang tersimpan
 export const checkSavedUserData = () => {
   return new Promise((resolve, reject) => {
@@ -250,6 +340,47 @@ export const checkSavedUserData = () => {
         }
       );
     });
+  });
+};
+
+
+// 🔹 Ambil data login (project_id & employee_id)
+export const getUserData = (callback) => {
+  db.transaction((tx) => {
+    tx.executeSql(
+      'SELECT project_id, employee_id FROM user LIMIT 1',
+      [],
+      (_, result) => {
+        if (result.rows.length > 0) {
+          callback(result.rows.item(0)); // Kirim data ke callback
+        } else {
+          console.warn('No user data found! ❌');
+          callback(null);
+        }
+      },
+      (error) => {
+        console.error('Error fetching user data ❌:', error);
+        callback(null);
+      }
+    );
+  });
+};
+
+// 🔹 Cek apakah tabel `user` ada di database
+export const checkUserTable = () => {
+  db.transaction((tx) => {
+    tx.executeSql(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='user'",
+      [],
+      (_, result) => {
+        if (result.rows.length > 0) {
+          console.log('Tabel "user" ditemukan ✅');
+        } else {
+          console.error('Tabel "user" TIDAK ditemukan ❌');
+        }
+      },
+      (error) => console.error('Error checking table ❌:', error)
+    );
   });
 };
 

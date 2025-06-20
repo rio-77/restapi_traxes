@@ -49,22 +49,36 @@ const DashboardTokoBelow = ({route, navigation }) => {
 
       const [userProfile, setUserProfile] = useState(null);
 
-  useEffect(() => {
-    // Mendapatkan data profil berdasarkan employee_id (NIK) yang disimpan di SQLite
-    const employeeId = '21530826'; // Ganti dengan employee_id yang sesuai
-    getUserProfile(employeeId, (profile) => {
-      if (profile) {
-        setUserProfile(profile);
-      } else {
-        console.log('No profile data found');
-      }
-    });
-  }, []);
-  // Menampilkan data profil
-  if (!userProfile) {
-    return <Text> </Text>;
-  }
+  // useEffect(() => {
+  //   // Mendapatkan data profil berdasarkan employee_id (NIK) yang disimpan di SQLite
+  //   const employeeId = '21530826'; // Ganti dengan employee_id yang sesuai
+  //   getUserProfile(employeeId, (profile) => {
+  //     if (profile) {
+  //       setUserProfile(profile);
+  //     } else {
+  //       console.log('No profile data found');
+  //     }
+  //   });
+  // }, []);
+  // // Menampilkan data profil
+  // if (!userProfile) {
+  //   return <Text> </Text>;
+  // }
 
+
+  useEffect(() => {
+    getUserProfile((profile) => {
+        if (profile) {
+            setUserProfile(profile);
+        } else {
+            console.log('No profile data found');
+        }
+    });
+}, []);
+
+if (!userProfile) {
+    return <Text> </Text>;
+}
 
     return (
         <View style={homeStyles.container} >

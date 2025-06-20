@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Alert, StyleSheet, Image, StatusBar, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, TextInput, Alert, StyleSheet, Image, StatusBar, TouchableOpacity, ActivityIndicator, Modal, useColorScheme } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import { db, createTable, saveUserData } from '../../helper/login';
+import { initCheckinTable } from '../../helper/sqliteservice';
 import LinearGradient from 'react-native-linear-gradient';
 import moment from 'moment';
+import changeNavigationBarColor from 'react-native-navigation-bar-color'; // Tambahkan ini
 const LoginScreenBelow = ({ navigation }) => {
+  const isDarkMode = useColorScheme() === 'dark'; // Deteksi mode gelap
   const [nik, setNik] = useState('');
   const [deviceID, setDeviceID] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,11 +16,15 @@ const LoginScreenBelow = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [loggedInNik, setLoggedInNik] = useState('');
   useEffect(() => {
+     // Set Navigation Bar Color
+     changeNavigationBarColor('#ffffff', true); // Warna biru tua dan ikon terang
+  
     const initializeApp = async () => {
       try {
         const id = await DeviceInfo.getUniqueId();
         setDeviceID(id);
         createTable();
+        initCheckinTable();
         if (!db) {
           console.error('Database SQLite belum terinisialisasi');
           return;
@@ -87,6 +94,7 @@ const LoginScreenBelow = ({ navigation }) => {
         // Navigasi otomatis setelah beberapa detik dan hilangkan modal
         setTimeout(() => {
           setModalVisible(false); // Menutup modal setelah 2 detik
+          
           db.transaction((tx) => {
             tx.executeSql(
               'SELECT * FROM user LIMIT 1;',
@@ -100,9 +108,12 @@ const LoginScreenBelow = ({ navigation }) => {
               (error) => console.error('Error fetching user profile from DB:', error)
             );
           });
-        }, 5000); // Tunggu 2 detik sebelum navigasi
+        }, 1500); // Tunggu 2 detik sebelum navigasi
       } else {
-        setNikError(`NIP ${nik} tidak terdaftar`);
+
+        var x = result.message;
+        // setNikError(`NIP ${nik} tidak terdaftar`);
+        setNikError(x);
         setShowErrorCard(true);
       }
     } catch (error) {
@@ -118,25 +129,40 @@ const LoginScreenBelow = ({ navigation }) => {
     }
   };
   return (
-    <View style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#121212' : '#ffffff' }]}>
+      <StatusBar translucent backgroundColor="transparent" barStyle={isDarkMode ? "light-content" : "dark-content"} />
       <Image source={require('../../assets/traxes-icon.png')} style={styles.logo} />
+
       <TextInput
-        style={styles.input}
-        placeholder=" (NIP) harus diisi ya, teman-teman .."
-        keyboardType="numeric"
-        value={nik}
-        onChangeText={setNik}
-      />
+  style={[styles.input, { 
+    borderColor: isDarkMode ? '#BB86FC' : '#1C4966', 
+    color: '#000000', // Warna teks saat diketik tetap hitam
+    backgroundColor: isDarkMode ? '#333333' : '#ffffff'
+  }]}
+  placeholder="(NIP) harus diisi ya, teman-teman .."
+  placeholderTextColor="#A9A9A9" // Warna placeholder abu-abu
+  keyboardType="numeric"
+  value={nik}
+  onChangeText={(text) => {
+    if (text.length <= 8) { 
+      setNik(text);
+    }
+  }}
+  maxLength={8}
+  textAlign="center"
+/>
+      
+
       {showErrorCard && (
-        <View style={styles.errorCard}>
-          <Text style={styles.deviceIdText}>DeviceId: {deviceID}</Text>
+        <View style={[styles.errorCard, { backgroundColor: isDarkMode ? '#E94545' : '#A53535' }]}>
+          <Text style={styles.deviceIdText}>ID Handphone: {deviceID}</Text>
           <Text style={styles.errorText}>{nikError}</Text>
         </View>
       )}
+
       <TouchableOpacity style={styles.buttonContainer} onPress={handleLogin} disabled={loading}>
         <LinearGradient
-          colors={['#204766', '#631D63']}
+          colors={isDarkMode ? ['#444444', '#222222'] : ['#204766', '#631D63']}
           style={styles.gradientButton}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -144,20 +170,22 @@ const LoginScreenBelow = ({ navigation }) => {
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Masuk</Text>}
         </LinearGradient>
       </TouchableOpacity>
+
       <View style={styles.footer}>
-        <Text style={styles.footerText}>© 2025 Traxes. All Rights Reserved.</Text>
-        <Text style={styles.footerText}>APK Version: 0.0.1</Text>
+        <Text style={[styles.footerText, { color: isDarkMode ? '#BBBBBB' : '#1C4966' }]}>
+          © 2025 Traxes. All Rights Reserved.
+        </Text>
+        <Text style={[styles.footerText, { color: isDarkMode ? '#BBBBBB' : '#1C4966' }]}>
+          APK Version: 0.0.1
+        </Text>
       </View>
-      {/* Modal dialog untuk sukses login */}
-      <Modal
-        transparent={true}
-        animationType="fade"
-        visible={modalVisible}
-        onRequestClose={() => {}}
-      >
+
+      <Modal transparent={true} animationType="fade" visible={modalVisible}>
         <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalText}>NIP {loggedInNik} berhasil login😊</Text> {/* Menampilkan NIK yang berhasil login */}
+          <View style={[styles.modalContainer, { backgroundColor: isDarkMode ? '#222222' : '#fff' }]}>
+            <Text style={[styles.modalText, { color: isDarkMode ? '#BB86FC' : '#204766' }]}>
+              NIP {loggedInNik} berhasil login😊
+            </Text>
           </View>
         </View>
       </Modal>
@@ -177,6 +205,10 @@ const styles = StyleSheet.create({
     height: 175,
     marginBottom: 25,
   },
+  buttonContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
   input: {
     width: '100%',
     height: 50,
@@ -186,10 +218,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 20,
     fontSize: 16,
-  },
-  buttonContainer: {
-    width: '100%',
-    alignItems: 'center',
+    textAlign: 'center', // Teks di tengah
+    color: 'black', // Warna teks hitam
   },
   gradientButton: {
     width: '100%',
@@ -202,17 +232,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
   },
+
   errorCard: {
-    marginBottom: 15,
-    marginTop: 5,
-    padding: 10,
+    width: '100%', // Sama dengan tombol Masuk
+    padding: 15, // Memberikan ruang agar teks tidak terlalu mepet
     backgroundColor: '#631D63',
     borderRadius: 8,
-    width: '85%',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 15,
+    marginTop: 5,
   },
   errorText: {
-    color: 'red',
+    color: 'white',
     fontSize: 14,
     marginTop: 0,
   },

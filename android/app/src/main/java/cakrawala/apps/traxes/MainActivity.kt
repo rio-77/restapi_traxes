@@ -1,4 +1,4 @@
-package com.traxes
+package  cakrawala.apps.traxes
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

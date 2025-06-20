@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
-import { fetchFilteredDataWithLimit } from '../../helper/sqliteservice'; // Pastikan path benar
+import { useNavigation } from '@react-navigation/native';
+import { fetchFilteredDataWithLimit } from '../../helper/sqliteservice';
+
+const BASE_URL = 'https://api.traxes.id/'; // 🔹 Ganti dengan URL server kamu
+
 const SearchTabBelow = () => {
     const [filteredData, setFilteredData] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    // Load 25 data toko terbaru saat pertama kali membuka screen
+    const navigation = useNavigation();
+
     useEffect(() => {
         setIsLoading(true);
         fetchFilteredDataWithLimit('', 25, (rows) => {
@@ -14,7 +19,7 @@ const SearchTabBelow = () => {
             setIsLoading(false);
         });
     }, []);
-    // Fungsi untuk menangani pencarian
+
     const handleSearch = (query) => {
         setSearchQuery(query);
         setIsLoading(true);
@@ -24,78 +29,93 @@ const SearchTabBelow = () => {
             setIsLoading(false);
         });
     };
-    // Render setiap item toko
-    const renderItem = ({ item }) => (
-        <TouchableOpacity style={styles.card}>
-            <View style={styles.cardContent}>
-                <Image
-                    source={item.photo ? { uri: item.photo } : require('../../assets/traxes-icon.png')}
-                    style={styles.image}
-                    resizeMode="cover"
-                />
-                <View style={styles.content}>
-                    <Text style={styles.namaToko}>Nama Toko: {item.customer_name}</Text>
-                    {/* Tampilkan Latitude dan Longitude */}
-                    <Text style={styles.coordinate}>Latitude: {item.latitude}</Text>
-                    <Text style={styles.coordinate}>Longitude: {item.longitude}</Text>
+
+    const handleNavigateToDetail = (item) => {
+        navigation.navigate('DetailCheckinCardBelow', {
+            customer_id: item.customer_id,
+            project_id: item.project_id,
+            customer_name: item.customer_name,
+            latitude: item.latitude,
+            longitude: item.longitude,
+            photo: item.photo,
+        });
+    };
+
+    const renderItem = ({ item }) => {
+        const photoUri = item.photo ? `${BASE_URL}${item.photo}` : null;
+
+        return (
+            <TouchableOpacity style={styles.card} onPress={() => handleNavigateToDetail(item)}>
+                <View style={styles.cardContent}>
+                    <Image
+                        source={photoUri ? { uri: photoUri } : require('../../assets/traxes-icon.png')}
+                        style={styles.image}
+                        resizeMode="cover"
+                    />
+                    <View style={styles.textContent}>
+                        <Text style={styles.namaToko} numberOfLines={2} ellipsizeMode="tail">
+                            {item.customer_name}
+                        </Text>
+                        <Text style={styles.coordinate}>{item.address || 'Tidak tersedia'}</Text>
+                        {/* <Text style={styles.coordinate}>{item.longitude || 'Tidak tersedia'}</Text> */}
+                        {/* <Text style={styles.address}>{item.address || 'Alamat tidak tersedia'}</Text> */}
+                    </View>
                 </View>
-            </View>
-        </TouchableOpacity>
-    );
+            </TouchableOpacity>
+        );
+    };
+
     return (
         <View style={styles.container}>
             <TextInput
                 style={styles.searchInput}
-                placeholder="Ketik nama toko.."
+                placeholder="Ketik nama lokasi / toko.."
                 value={searchQuery}
                 onChangeText={handleSearch}
             />
-            {isLoading ? (
-                <View style={styles.centeredContainer}>
-                    <Text style={styles.noDataText}>Sedang mencari..</Text>
-                </View>
-            ) : filteredData.length === 0 ? (
-                <View style={styles.centeredContainer}>
-                    <Text style={styles.noDataText}>
-                        {searchQuery ? 'Toko tidak ditemukan!' : 'Toko kosong, silahkan cari toko!'}
-                    </Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={filteredData}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.customer_id.toString()}
-                    contentContainerStyle={styles.flatListContent}
-                />
-            )}
+            <FlatList
+                data={filteredData}
+                renderItem={renderItem}
+                keyExtractor={(item, index) => item?.customer_id?.toString() || index.toString()}
+                ListEmptyComponent={() => (
+                    <View style={styles.centeredContainer}>
+                        <Text style={styles.noDataText}>
+                            {isLoading ? 'Belum ada lokasi / toko' : searchQuery ? 'Toko tidak ditemukan!' : 'Toko kosong, silahkan cari toko!'}
+                        </Text>
+                    </View>
+                )}
+                contentContainerStyle={{ paddingHorizontal: 15, paddingBottom: 85 }}
+            />
         </View>
     );
 };
-// Gaya tampilan
+
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: 'white' },
+    container: {
+        flex: 1, // Fix masalah layout biar FlatList gak terdorong ke bawah
+        backgroundColor: 'white',
+    },
     searchInput: {
         height: 50,
         borderColor: '#631D63',
         borderWidth: 1,
         borderRadius: 10,
         paddingHorizontal: 15,
-        margin: 15,
+        marginHorizontal: 15,
+        marginBottom: 5, // Dikurangi supaya lebih dekat ke daftar
         fontSize: 16,
         color: '#333',
     },
     card: {
-      backgroundColor: '#fff',
-      borderRadius: 12,
-      marginVertical: 10,
-      overflow: 'hidden',
-      // Shadow untuk iOS
-      shadowColor: '#000',
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 2 },
-      // Elevation untuk Android
-      elevation: 4,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginVertical: 7,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 4,
     },
     cardContent: {
         flexDirection: 'row',
@@ -105,10 +125,13 @@ const styles = StyleSheet.create({
         flex: 1,
         marginLeft: 10,
     },
-    text: {
-        fontSize: 14,
-        color: '#333',
-        marginBottom: 5,
+    namaToko: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#274366',
+        lineHeight: 20,
+        flexShrink: 1,
+        textAlign: 'left',
     },
     image: {
         width: 70,
@@ -121,28 +144,16 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     centeredContainer: {
-        flex: 1,
+        flexGrow: 1, // Fix layout biar tetap rapi kalau list kosong
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    flatListContent: {
-        padding: 15,
-    },
-    namaToko: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: '#274366',
-    },
-    content: {
-      padding: 12,
-      backgroundColor: '#f7f7f7',
+        paddingHorizontal: 15,
     },
     coordinate: {
-      fontSize: 14,
-      color: '#333',
-      marginVertical: 2,
+        fontSize: 14,
+        color: '#333',
+        marginVertical: 2,
     },
 });
+
 export default SearchTabBelow;
-
-

@@ -3,7 +3,8 @@ import { View, Text, TextInput, Alert, StyleSheet, ScrollView, TouchableOpacity,
 import { launchCamera } from 'react-native-image-picker';
 import LinearGradient from 'react-native-linear-gradient';
 import Geolocation from '@react-native-community/geolocation';
-import { insertLokasi, createTable } from '../../helper/sqliteservice';
+import { insertLokasi, createTable, getAllTokoData, getLastCustomerId } from '../../helper/sqliteservice';
+import { insertProjectToSQLite, getProjectIdFromSQLite } from '../../helper/sqliteservice';
 import { getusersprofile } from '../../helper/login';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
@@ -46,8 +47,29 @@ const TambahLokasiTestBelow = () => {
       }
     };
     fetchUserProfile();
+
+    const fetchAndStoreProjectId = async () => {
+      try {
+        const profile = await getusersprofile();
+        const { project_id } = profile;
+        console.log('Project ID dari login:', project_id);
+
+        // Simpan project_id ke SQLite
+        await insertProjectToSQLite(project_id);
+        console.log('Project ID disimpan ke SQLite');
+
+        // Ambil project_id dari SQLite untuk verifikasi
+        const savedProjectId = await getProjectIdFromSQLite();
+        console.log('Project ID dari SQLite:', savedProjectId);
+      } catch (error) {
+        console.error('Error fetching or saving project ID:', error);
+      }
+    };
+
+    fetchAndStoreProjectId();
+
     getCurrentLocation();
-  }, [] );
+  }, []);
 
   const handleAmbilFoto = async () => {
     const options = {
@@ -71,16 +93,16 @@ const TambahLokasiTestBelow = () => {
 
   const handleTambahLokasi = async () => {
     if (!form.customer_name || !form.owner_name || !form.no_contact || !fotoToko) {
-      Alert.alert('Error', 'Harap isi semua kolom yang wajib dan ambil foto!');
+      Alert.alert('Peringatan Nih !', 'Harap isi semua kolom yang wajib dan ambil foto!');
       return;
     }
-
+  
     if (!userProfile) {
       Alert.alert('Error', 'Profil pengguna tidak ditemukan!');
       return;
     }
-
-    const {  employee_id: createdby, project_id : project_id } = userProfile;
+  
+    const { employee_id: createdby, project_id: project_id } = userProfile;
     const requestBody = {
       project_id,
       customer_name: form.customer_name,
@@ -94,23 +116,36 @@ const TambahLokasiTestBelow = () => {
       longitude,
       photo: fotoToko,
       createdby,
-      full_address: alamatLengkap,
+      address: alamatLengkap,
     };
-
+  
     try {
       setLoading(true);
-      console.log('Sending Request:', requestBody);
-      const response = await axios.post('https://api.traxes.id/index.php/transaksi/tambahtoko', requestBody, {
-        timeout: 10000, // Set timeout to 10 seconds
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
+      console.log('Mengirim Permintaan:', requestBody);
+      const response = await axios.post(
+        'https://api.traxes.id/index.php/transaksi/tambahtoko',
+        requestBody,
+        {
+          timeout: 10000,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+  
       if (response.data.status === 1) {
-        Alert.alert('Berhasil', response.data.message + '\nLokasi berhasil ditambahkan!' + '\nID Toko: ' + response.data.data);
+        const customerId = response.data.data; // Ambil customer_id dari respons API
+        Alert.alert(
+          'Berhasil',
+          response.data.message +
+            '\nLokasi Toko berhasil ditambahkan..' +
+            '\nCustomer ID: ' +
+            customerId
+        );
+  
+        // Simpan ke SQLite
         insertLokasi({
-          customer_id: response.data.data,
+          customer_id: customerId,
           customer_name: form.customer_name,
           owner_name: form.owner_name,
           no_contact: form.no_contact,
@@ -119,9 +154,16 @@ const TambahLokasiTestBelow = () => {
           district_id: form.district_id,
           city_id: form.city_id,
           photo: fotoToko,
-          full_address: alamatLengkap,
+          address: alamatLengkap,
+          latitude,
+          longitude,
         });
-
+  
+        console.log('Latitude:', latitude);
+        console.log('Longitude:', longitude);
+        getAllTokoData(); // Cek hasil setelah insert
+  
+        // Bersihkan form input
         setForm({
           customer_name: '',
           owner_name: '',
@@ -135,13 +177,24 @@ const TambahLokasiTestBelow = () => {
         setLatitude('');
         setLongitude('');
         setAlamatLengkap('');
-
-        navigation.navigate('DetailCheckinBelow');
+  
+        // Navigasi ke DetailCheckinBelow dengan customer_id dan project_id
+        navigation.navigate('DetailCheckinBelow', {
+          customer_id: customerId,
+          project_id: userProfile.project_id,
+        });
+  
       } else {
-        Alert.alert('Gagal', response.data.message || 'Gagal menambahkan lokasi.');
+        Alert.alert(
+          'Gagal',
+          response.data.message || 'Gagal menambahkan lokasi.'
+        );
       }
     } catch (error) {
-      console.error('Error saat mengirim data ke server:', error.response ? error.response.data : error.message);
+      console.error(
+        'Error saat mengirim data ke server:',
+        error.response ? error.response.data : error.message
+      );
       Alert.alert('Error', `Terjadi kesalahan: ${error.message}`);
     } finally {
       setLoading(false);
@@ -223,7 +276,7 @@ const TambahLokasiTestBelow = () => {
           <View style={styles.card}>
             <Text style={styles.cardText}>Latitude: {latitude}</Text>
             <Text style={styles.cardText}>Longitude: {longitude}</Text>
-            <Text style={styles.cardTextAddres}>Address: {alamatLengkap}</Text>
+            <Text style={styles.cardTextAddres}>Alamat: {alamatLengkap}</Text>
           </View>
         )}
 
